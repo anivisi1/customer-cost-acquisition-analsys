@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,7 +6,6 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
-import streamlit as st
 
 # Function to load and preprocess data
 @st.cache(allow_output_mutation=True)
@@ -62,52 +62,20 @@ def train_and_evaluate_model(data):
     model = LinearRegression()
     model.fit(X_train, y_train)
     
-    # Evaluate the model
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    
-    # Calculate feature importance
-    feature_importance = pd.DataFrame({'Feature': X.columns, 'Importance': model.coef_})
-    feature_importance = feature_importance.sort_values(by='Importance', ascending=False).reset_index(drop=True)
-    
-    return model, X, X_test, y_test, y_pred, mse, r2, feature_importance
+    return model, X_test, y_test
 
-# Function to visualize results and interpretation
-def visualize_results(data, model, X, X_test, y_test, y_pred, mse, r2, feature_importance):
-    st.title('Model Results and Interpretation')
-
-    # Display model performance metrics
-    st.subheader('Model Performance')
-    st.write(f'Mean Squared Error: {mse}')
-    st.write(f'R^2 Score: {r2}')
-
-    # Display coefficients
-    coefficients = pd.DataFrame({'Feature': X.columns, 'Coefficient': model.coef_})
-    st.subheader('Model Coefficients')
-    st.write(coefficients)
-
-    # Example: Visualize predictions vs actual values
-    st.subheader('Predictions vs Actual Values')
-    predictions = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
-    st.write(predictions.head(10))
-
-    # Display feature importance
-    st.subheader('Feature Importance')
-    st.write(feature_importance)
-
-    # Example: Visualize feature importance
-    fig, ax = plt.subplots()
-    sns.barplot(x='Feature', y='Importance', data=feature_importance, ax=ax)
-    ax.set_title('Feature Importance')
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+# Function to make predictions
+def make_prediction(model, X):
+    # Perform prediction
+    y_pred = model.predict(X)
+    return y_pred
 
 # Main function to integrate all parts and run Streamlit app
-def main(data_file):
+def main():
     st.title('Customer Acquisition Analysis')
 
     # Load data
+    data_file = 'customer_acquisition_data_with_features.csv'
     data = load_data(data_file)
 
     # Perform EDA
@@ -116,12 +84,26 @@ def main(data_file):
     # Perform feature engineering if needed
     data = feature_engineering(data)
 
-    # Train and evaluate model
-    model, X, X_test, y_test, y_pred, mse, r2, feature_importance = train_and_evaluate_model(data)
+    # Train model and get necessary objects
+    model, X_test, y_test = train_and_evaluate_model(data)
 
-    # Visualize results and interpretation
-    visualize_results(data, model, X, X_test, y_test, y_pred, mse, r2, feature_importance)
+    # Display form for user input
+    st.sidebar.title('Make a Prediction')
+    st.sidebar.write('Enter values for prediction:')
+    # Example: Add input fields for user to enter values
+    input_features = {}
+    for feature in X_test.columns:
+        input_features[feature] = st.sidebar.number_input(f'Enter {feature}', min_value=0.0)
+
+    if st.sidebar.button('Predict'):
+        # Create a DataFrame from user input to match model's expected input format
+        input_data = pd.DataFrame([input_features])
+        # Perform prediction using the trained model
+        prediction = make_prediction(model, input_data)
+
+        # Display prediction
+        st.sidebar.subheader('Prediction Results:')
+        st.sidebar.write(f'Predicted New Customers: {prediction[0]:.2f}')
 
 if __name__ == '__main__':
-    data_file = 'customer_acquisition_data_with_features.csv'
-    main(data_file)
+    main()
